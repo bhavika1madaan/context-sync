@@ -1,71 +1,63 @@
-# context-sync README
+# Context Sync
 
-This is the README for your extension "context-sync". After writing up a brief description, we recommend including the following sections.
+A VS Code extension that packages your project's code into clean, structured context and copies it to your clipboard — ready to paste into any AI chatbot (ChatGPT, Claude, Gemini, etc.). No more manually opening files one by one and pasting them in.
+
+Its core feature: **hash-based change detection**. After your first sync, the extension fingerprints every file. On future syncs, it only includes files that actually changed — so you're not re-sending your whole codebase every time you ask a follow-up question.
+
+## Why
+
+Sharing project context with an AI chatbot usually means manually copying files one at a time, and re-copying everything again after every change. Context Sync automates both problems: one command bundles your whole workspace, and a second command sends only what's different since the last sync.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Full sync** — scans your entire workspace and copies all eligible files, formatted with clear file-path headers and language-tagged code blocks
+- **Changed-only sync** — computes a SHA-1 hash of every file and compares it against a saved fingerprint from the last sync; only modified or new files are included
+- **Security filtering** — `.env` files and other secrets are excluded by pattern matching, so credentials never leave your machine
+- **Noise pruning** — automatically skips `node_modules`, `.git`, build output, and other non-source directories
+- **Crash-safe reads** — unreadable or binary files are skipped individually instead of failing the whole sync
+- **Zero runtime dependencies** — built entirely on Node.js built-ins (`fs`, `path`, `crypto`) and the VS Code API
 
-For example if there is an image subfolder under your extension project workspace:
+## Usage
 
-\!\[feature X\]\(images/feature-x.png\)
+Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **`Context Sync: Copy Full Workspace Context`** — copies your whole project to the clipboard
+- **`Context Sync: Copy Only Changed Files`** — copies only files changed since the last sync
 
-## Requirements
+Paste the result into any chatbot.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## How Change Detection Works
 
-## Extension Settings
+1. On sync, every eligible file's contents are hashed with SHA-1.
+2. Hashes are stored in a local `.contextsync-state.json` file at the project root.
+3. On the next "changed-only" sync, each file's current hash is compared against the stored one:
+   - No match (or file didn't exist before) → included in the sync
+   - Match → skipped
+   - File in the old state but missing now → reported as deleted
+4. The state file is updated with the latest hashes after every sync.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+This keeps repeat syncs small — after editing one file out of fifty, only that one file gets sent.
 
-For example:
+## Tech Stack
 
-This extension contributes the following settings:
+- TypeScript
+- VS Code Extension API
+- Node.js built-in modules: `fs`, `path`, `crypto`
+- Webpack (bundling)
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Installation (development)
 
-## Known Issues
+```bash
+git clone https://github.com/bhavika1madaan/context-sync.git
+cd context-sync
+npm install
+```
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Open the folder in VS Code and press `F5` to launch the Extension Development Host, then run the commands from the Command Palette in the new window.
 
-## Release Notes
+## Project Structure
 
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+```
+src/
+└── extension.ts   # All extension logic: file walking, filtering, hashing, state, formatting
+```
